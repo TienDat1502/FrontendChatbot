@@ -131,6 +131,94 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
                         />
                       );
                     },
+                    blockquote({ children }) {
+                      return (
+                        <blockquote className="border-l-4 border-blue-500 bg-blue-50/50 dark:bg-blue-900/20 text-slate-700 dark:text-slate-300 px-4 py-3 my-4 rounded-r-xl shadow-sm text-sm leading-relaxed">
+                          {children}
+                        </blockquote>
+                      );
+                    },
+                    table({ children }) {
+                      return (
+                        <div className="overflow-x-auto my-4 rounded-xl border border-slate-200 dark:border-slate-800/60 bg-white dark:bg-slate-900 shadow-sm">
+                          <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800 text-sm text-left">
+                            {children}
+                          </table>
+                        </div>
+                      );
+                    },
+                    thead({ children }) {
+                      return <thead className="bg-slate-50 dark:bg-slate-800/40">{children}</thead>;
+                    },
+                    th({ children }) {
+                      return <th className="px-4 py-3 font-semibold text-slate-800 dark:text-slate-200 tracking-wide whitespace-nowrap">{children}</th>;
+                    },
+                    td({ children }) {
+                      return <td className="px-4 py-3 text-slate-600 dark:text-slate-300 border-t border-slate-200/60 dark:border-slate-800/60 whitespace-nowrap">{children}</td>;
+                    },
+                    img({ src, alt, ...props }) {
+                      if (src?.startsWith('local-image://')) {
+                        const imageId = src.replace('local-image://', '');
+                        // @ts-ignore
+                        const base64 = typeof window !== 'undefined' && window.__CHAT_FILES ? window.__CHAT_FILES[imageId] : null;
+                        
+                        if (base64) {
+                          const isJpeg = base64.startsWith('/9j/');
+                          const mimeType = isJpeg ? 'image/jpeg' : 'image/png';
+                          return <img src={`data:${mimeType};base64,${base64}`} alt={alt || 'Hình ảnh'} className="max-w-full h-auto rounded-lg shadow-sm my-2 max-h-64 object-contain inline-block" />;
+                        }
+                      }
+                      return <img src={src} alt={alt} className="max-w-full h-auto rounded-lg shadow-sm my-2 inline-block" {...props} />;
+                    },
+                    a({ href, children, ...props }) {
+                      if (href?.startsWith('local-file://')) {
+                        const fileId = href.replace('local-file://', '');
+                        
+                        const handleDownload = (e: React.MouseEvent) => {
+                          e.preventDefault();
+                          // @ts-ignore
+                          const base64 = typeof window !== 'undefined' && window.__CHAT_FILES ? window.__CHAT_FILES[fileId] : null;
+                          if (!base64) {
+                            alert('Không tìm thấy dữ liệu file. Vui lòng tải lại trang.');
+                            return;
+                          }
+                          
+                          try {
+                            const byteCharacters = atob(base64);
+                            const byteNumbers = new Array(byteCharacters.length);
+                            for (let i = 0; i < byteCharacters.length; i++) {
+                              byteNumbers[i] = byteCharacters.charCodeAt(i);
+                            }
+                            const byteArray = new Uint8Array(byteNumbers);
+                            const blob = new Blob([byteArray], {type: 'application/pdf'});
+                            
+                            const blobUrl = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = blobUrl;
+                            a.download = String(children);
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(blobUrl);
+                          } catch (err) {
+                            console.error("Lỗi khi tải file:", err);
+                            alert("Đã xảy ra lỗi khi tạo file.");
+                          }
+                        };
+                        
+                        return (
+                          <a 
+                            href="#" 
+                            onClick={handleDownload} 
+                            className="inline-flex items-center gap-1.5 px-3 py-2 my-2 bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 rounded-lg shadow-sm hover:bg-blue-50 dark:hover:bg-slate-700 transition-colors font-medium border border-slate-200 dark:border-slate-700 no-underline"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                            Tải xuống {children}
+                          </a>
+                        );
+                      }
+                      return <a href={href} className="text-blue-600 hover:underline" {...props}>{children}</a>;
+                    },
                   }}
                 >
                   {displayedText}

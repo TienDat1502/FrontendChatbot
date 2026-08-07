@@ -1,0 +1,96 @@
+[
+    {
+        "confidence": 0.9577955007553101,
+        "intent": "MY_ABSENCE",
+        "message": "Xin lỗi, tôi chưa có thông tin cho yêu cầu này.",
+        "resp": {
+            "data": {
+                "Data": {
+                    "Table": [
+                        {
+                            "TITLE_NAME": "Dữ liệu nghỉ phép của bạn từ ngày 01/01/2025 đến ngày 06/08/2026 chi tiết như sau:",
+                            "_tsStatus_": 10
+                        }
+                    ],
+                    "Table1": [
+                        {
+                            "DESCRIPTION": "<Table>\nNgày nghỉ,Loại nghỉ,Số giờ nghỉ,Giờ bắt đầu,Giờ kết thúc\n\"11/01/2025\",\"Nghỉ phép năm\",\"3.5\",\"null\",\"null\"\n\"24/01/2025\",\"Nghỉ phép năm\",\"4\",\"null\",\"null\"\n\"25/01/2025\",\"Nghỉ phép năm\",\"8\",\"null\",\"null\"\n\"01/02/2025\",\"Nghỉ phép năm\",\"8\",\"null\",\"null\"\n\"03/02/2025\",\"Nghỉ phép năm\",\"8\",\"null\",\"null\"\n\"04/02/2025\",\"Nghỉ phép năm\",\"8\",\"null\",\"null\"\n\"05/02/2025\",\"Nghỉ phép năm\",\"8\",\"null\",\"null\"\n\"01/11/2025\",\"Không quét thẻ\",\"8\",\"null\",\"null\"\n\"02/11/2025\",\"Không quét thẻ\",\"8\",\"null\",\"null\"\n\"03/11/2025\",\"Không quét thẻ\",\"8\",\"null\",\"null\"\n\"04/11/2025\",\"Không quét thẻ\",\"8\",\"null\",\"null\"\n\"05/11/2025\",\"Không quét thẻ\",\"8\",\"null\",\"null\"\n\"07/11/2025\",\"Không quét thẻ\",\"8\",\"null\",\"null\"\n\"08/11/2025\",\"Không quét thẻ\",\"8\",\"null\",\"null\"\n\"09/11/2025\",\"Không quét thẻ\",\"8\",\"null\",\"null\"\n</Table>",
+                            "_tsStatus_": 10
+                        }
+                    ],
+                    "Table2": [
+                        {
+                            "SUGGEST_NAME": "Mình có thể hỗ cho bạn về những thông tin như : <br> <b> 1. Thông tin cá nhân.</b> <br> <b> 2. Thông tin chấm công. </b> <br> <b> 3. Thông tin lương </b> <br> Bạn muốn mình hỗ trợ liên quan đến thông tin gì nữa không? <br> Hãy cho mình biết nhé. <br> Xin cảm ơn.",
+                            "_tsStatus_": 10
+                        }
+                    ]
+                },
+                "ErrorData": null,
+                "LogData": [
+                    {
+                        "DataBaseConnected": "TVS",
+                        "Parameter": "'MY_ABSENCE','0.9577955007553101','20250101','20260806','1005162','218','','','1','', :p_1, :p_2, :p_3",
+                        "Statement": "begin SYS_SEL_COM_CHATBOX02_0_100_V2('MY_ABSENCE','0.9577955007553101','20250101','20260806','1005162','218','','','1','', :p_1, :p_2, :p_3); end;",
+                        "StatementName": "SYS_SEL_COM_CHATBOX02_0_100_V2"
+                    }
+                ],
+                "Results": "S",
+                "Totals": 3
+            },
+            "status_code": 200,
+            "success": true
+        },
+        "time": {
+            "from": "20250101",
+            "to": "20260806",
+            "type": "range"
+        }
+    },
+    {
+        "confidence": 0.9503223896026611,
+        "intent": "MY_ANNUALLEAVE",
+        "message": "Xin lỗi, tôi chưa có thông tin cho yêu cầu này.",
+        "resp": {
+            "data": {
+                "Data": {
+                    "Table": [
+                        {
+                            "TITLE_NAME": "Dữ liệu nghỉ phép năm của bạn từ ngày 01/01/2025 đến ngày 06/08/2026 chi tiết như sau:",
+                            "_tsStatus_": 10
+                        }
+                    ],
+                    "Table1": [
+                        {
+                            "DESCRIPTION": "<Table>\nNgày nghỉ,Loại nghỉ,Số giờ nghỉ,Giờ bắt đầu,Giờ kết thúc\n\"11/01/2025\",\"Nghỉ phép năm\",\"3.5\",null,null\n\"24/01/2025\",\"Nghỉ phép năm\",\"4\",null,null\n\"25/01/2025\",\"Nghỉ phép năm\",\"8\",null,null\n\"01/02/2025\",\"Nghỉ phép năm\",\"8\",null,null\n\"03/02/2025\",\"Nghỉ phép năm\",\"8\",null,null\n\"04/02/2025\",\"Nghỉ phép năm\",\"8\",null,null\n\"05/02/2025\",\"Nghỉ phép năm\",\"8\",null,null\n\"Tổng cộng\",null,\"47.5\",null,null\n</Table>",
+                            "_tsStatus_": 10
+                        }
+                    ],
+                    "Table2": [
+                        {
+                            "SUGGEST_NAME": "Mình có thể hỗ cho bạn về những thông tin như : <br> <b> 1. Thông tin cá nhân.</b> <br> <b> 2. Thông tin chấm công. </b> <br> <b> 3. Thông tin lương </b> <br> Bạn muốn mình hỗ trợ liên quan đến thông tin gì nữa không? <br> Hãy cho mình biết nhé. <br> Xin cảm ơn.",
+                            "_tsStatus_": 10
+                        }
+                    ]
+                },
+                "ErrorData": null,
+                "LogData": [
+                    {
+                        "DataBaseConnected": "TVS",
+                        "Parameter": "'MY_ANNUALLEAVE','0.9503223896026611','20250101','20260806','1005162','218','','','1','', :p_1, :p_2, :p_3",
+                        "Statement": "begin SYS_SEL_COM_CHATBOX02_0_100_V2('MY_ANNUALLEAVE','0.9503223896026611','20250101','20260806','1005162','218','','','1','', :p_1, :p_2, :p_3); end;",
+                        "StatementName": "SYS_SEL_COM_CHATBOX02_0_100_V2"
+                    }
+                ],
+                "Results": "S",
+                "Totals": 3
+            },
+            "status_code": 200,
+            "success": true
+        },
+        "time": {
+            "from": "20250101",
+            "to": "20260806",
+            "type": "range"
+        }
+    }
+]

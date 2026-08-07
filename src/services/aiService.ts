@@ -1,4 +1,6 @@
 import type { ChartSpec } from '../types/chat';
+import axios from 'axios';
+
 
 export interface GeneratedAiResponse {
   content: string;
@@ -99,22 +101,11 @@ export async function simulateAiResponseStream(
   onChunk: (chunkText: string, fullText: string, chart?: ChartSpec) => void,
   signal?: AbortSignal
 ): Promise<GeneratedAiResponse> {
-  const lower = userPrompt.toLowerCase();
   
-  let targetResponse: GeneratedAiResponse;
+  const finalMessage = await callChatbotAPI(userPrompt);
 
-  if (lower.includes('chart') || lower.includes('data') || lower.includes('revenue') || lower.includes('graph') || lower.includes('analytics') || lower.includes('metrics')) {
-    const randomIndex = Math.floor(Math.random() * RESPONSES_WITH_CHARTS.length);
-    targetResponse = RESPONSES_WITH_CHARTS[randomIndex];
-  } else if (lower.includes('code') || lower.includes('typescript') || lower.includes('sdk') || lower.includes('api') || lower.includes('function')) {
-    const randomIndex = Math.floor(Math.random() * CODE_RESPONSES.length);
-    targetResponse = { content: CODE_RESPONSES[randomIndex] };
-  } else {
-    const randomIndex = Math.floor(Math.random() * GENERAL_RESPONSES.length);
-    targetResponse = { content: GENERAL_RESPONSES[randomIndex] };
-  }
-
-  const words = targetResponse.content.split(/(\s+)/);
+  // Chặt chuỗi ra để làm hiệu ứng gõ phím
+  const words = finalMessage.split(/(\s+)/);
   let currentText = '';
   const totalWords = words.length;
 
@@ -124,16 +115,15 @@ export async function simulateAiResponseStream(
     }
 
     const token = words[i];
-    if (!token) {
-      continue;
-    }
+    if (!token) continue;
 
     currentText += token;
 
     const isLastChunk = i === totalWords - 1;
     const chunkSize = Math.max(1, Math.min(6, Math.ceil(totalWords / 18)));
     if (i % chunkSize === 0 || isLastChunk) {
-      onChunk(token, currentText, isLastChunk ? targetResponse.chart : undefined);
+      // Để chart là undefined vì backend mình chưa trả về biểu đồ
+      onChunk(token, currentText, undefined); 
     }
 
     const delay = Math.floor(Math.random() * 22) + 10;
@@ -141,7 +131,111 @@ export async function simulateAiResponseStream(
   }
 
   return {
-    content: targetResponse.content,
-    chart: targetResponse.chart,
+    content: finalMessage,
+    chart: undefined,
   };
+}
+export async function callChatbotAPI(message: string): Promise<string> {
+  try {
+    const response = await axios.post('http://localhost:3002/api/chat', { message });
+    
+    if (response.data.success && response.data.data) {
+      const responseData = response.data.data;
+      const tables = responseData.resp?.data?.Data;
+      
+      let finalMessage = responseData.message || "Không có thông báo.";
+      
+      if (tables) {
+        const title = tables.Table?.[0]?.TITLE_NAME || "";
+        const description = tables.Table1?.[0]?.DESCRIPTION || "";
+        let suggest = tables.Table2?.[0]?.SUGGEST_NAME || "";
+        
+        if (suggest) {
+          suggest = suggest
+            .replace(/<br\s*\/?>/gi, '\n')
+            .replace(/<b>/gi, '**')
+            .replace(/<\/b>/gi, '**');
+            
+          suggest = `> 💡 **Gợi ý hỗ trợ:**\n> \n> ${suggest.split('\n').map((line: string) => line.trim()).filter((line: string) => line).join('\n> ')}`;
+        }
+        
+        finalMessage = `${title}\n\n${description}\n\n${suggest}`.trim();
+      }
+      
+      // Chuyển đổi thẻ <Table> CSV thành Markdown Table chuẩn
+      finalMessage = finalMessage.replace(/<Table>\n([\s\S]*?)\n<\/Table>/gi, (match, csvContent) => {
+        const lines = csvContent.split('\n').filter((line: string) => line.trim() !== '');
+        if (lines.length === 0) return match;
+
+        const parseCsvLine = (line: string) => {
+          return line.split(',').map(cell => {
+            let val = cell.trim();
+            if (val.startsWith('"') && val.endsWith('"')) {
+              val = val.substring(1, val.length - 1);
+            }
+            if (val === 'null' || !val) val = '-';
+            return val;
+          });
+        };
+
+        const headers = parseCsvLine(lines[0]);
+        const markdownLines = [];
+        
+        // Header
+        markdownLines.push('| ' + headers.join(' | ') + ' |');
+        markdownLines.push('|' + headers.map(() => '---').join('|') + '|');
+        
+        // Rows
+        for (let i = 1; i < lines.length; i++) {
+          const cells = parseCsvLine(lines[i]);
+          markdownLines.push('| ' + cells.join(' | ') + ' |');
+        }
+        
+        return markdownLines.join('\n');
+      });
+
+      // Xử lý thẻ <File> chứa Base64: Lưu vào biến toàn cục để không bị giới hạn 5MB của sessionStorage
+      finalMessage = finalMessage.replace(/<File>([\s\S]*?)<\/File>/gi, (match, fileContent) => {
+        const nameMatch = fileContent.match(/file_name:\s*([^,]+)/i);
+        const dataMatch = fileContent.match(/file_data:\s*([^,]+)/i);
+        
+        const fileName = nameMatch ? nameMatch[1].trim() : "Tài_liệu.pdf";
+        const fileData = dataMatch ? dataMatch[1].trim().replace(/\s+/g, '') : "";
+        
+        if (fileData && typeof window !== 'undefined') {
+          // @ts-ignore
+          if (!window.__CHAT_FILES) window.__CHAT_FILES = {};
+          const fileId = Math.random().toString(36).substring(2, 10);
+          // @ts-ignore
+          window.__CHAT_FILES[fileId] = fileData;
+          return `\n\n[${fileName}](local-file://${fileId})\n\n`;
+        }
+        
+        return `\n\n📎 **Tệp đính kèm:** \`${fileName}\` *(Lỗi tải file)*\n\n`;
+      });
+
+      // Xử lý thẻ <Image> chứa Base64 siêu lớn
+      finalMessage = finalMessage.replace(/<Image>\s*([\s\S]*?)\s*<\/Image>/gi, (match, imageContent) => {
+        const base64Data = imageContent.trim().replace(/\s+/g, '');
+        
+        if (base64Data && typeof window !== 'undefined') {
+          // @ts-ignore
+          if (!window.__CHAT_FILES) window.__CHAT_FILES = {};
+          const imageId = Math.random().toString(36).substring(2, 10);
+          // @ts-ignore
+          window.__CHAT_FILES[imageId] = base64Data;
+          return `![Hình ảnh](local-image://${imageId})`;
+        }
+        
+        return `*(Lỗi hiển thị hình ảnh)*`;
+      });
+
+      return finalMessage;
+    } else {
+      return response.data.message || "Xin lỗi, mình chưa có dữ liệu cho câu hỏi này.";
+    }
+  } catch (error) {
+    console.error("Lỗi khi gọi Chatbot API:", error);
+    return "Đã xảy ra lỗi kết nối đến máy chủ. Vui lòng thử lại sau.";
+  }
 }
