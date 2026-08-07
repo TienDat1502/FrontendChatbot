@@ -8,6 +8,7 @@ import { ChatChart } from '../charts/ChatChart';
 import { Tooltip } from '../ui/Tooltip';
 import { FilePreview } from '../ui/FilePreview';
 import { useStreamingText } from '../../hooks/useStreamingText';
+import * as XLSX from 'xlsx';
 
 interface ChatMessageItemProps {
   message: Message;
@@ -157,48 +158,108 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
                       return <td className="px-4 py-3 text-slate-600 dark:text-slate-300 border-t border-slate-200/60 dark:border-slate-800/60 whitespace-nowrap">{children}</td>;
                     },
                     img({ src, alt, ...props }) {
-                      if (src?.startsWith('local-image://')) {
-                        const imageId = src.replace('local-image://', '');
+                      if (src?.startsWith('https://chat-image.local/')) {
+                        const imageId = src.replace('https://chat-image.local/', '');
                         // @ts-ignore
                         const base64 = typeof window !== 'undefined' && window.__CHAT_FILES ? window.__CHAT_FILES[imageId] : null;
                         
                         if (base64) {
-                          const isJpeg = base64.startsWith('/9j/');
-                          const mimeType = isJpeg ? 'image/jpeg' : 'image/png';
-                          return <img src={`data:${mimeType};base64,${base64}`} alt={alt || 'Hình ảnh'} className="max-w-full h-auto rounded-lg shadow-sm my-2 max-h-64 object-contain inline-block" />;
+                          let mimeType = 'image/png';
+                          if (base64.startsWith('/9j/')) mimeType = 'image/jpeg';
+                          else if (base64.startsWith('iVBORw')) mimeType = 'image/png';
+                          else if (base64.startsWith('R0lG')) mimeType = 'image/gif';
+                          else if (base64.startsWith('UklG')) mimeType = 'image/webp';
+                          const handleDownload = (e: React.MouseEvent) => {
+                            e.preventDefault();
+                            try {
+                              const byteCharacters = atob(base64);
+                              const byteNumbers = new Array(byteCharacters.length);
+                              for (let i = 0; i < byteCharacters.length; i++) {
+                                byteNumbers[i] = byteCharacters.charCodeAt(i);
+                              }
+                              const byteArray = new Uint8Array(byteNumbers);
+                              const blob = new Blob([byteArray], {type: mimeType});
+                              
+                              const blobUrl = URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              a.href = blobUrl;
+                              const ext = mimeType.split('/')[1] || 'png';
+                              a.download = `hinh_anh_${imageId}.${ext}`;
+                              document.body.appendChild(a);
+                              a.click();
+                              document.body.removeChild(a);
+                              URL.revokeObjectURL(blobUrl);
+                            } catch (err) {
+                              console.error('Lỗi khi tải ảnh:', err);
+                              alert('Có lỗi xảy ra khi tải ảnh.');
+                            }
+                          };
+                          
+                          return (
+                            <div className="relative inline-block group my-2">
+                              <img src={`data:${mimeType};base64,${base64}`} alt={alt || 'Hình ảnh'} className="max-w-full h-auto rounded-lg shadow-sm max-h-64 object-contain" />
+                              <button
+                                onClick={handleDownload}
+                                className="absolute top-2 right-2 p-2 bg-slate-900/60 hover:bg-slate-900/80 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-all backdrop-blur-sm shadow-sm"
+                                title="Tải ảnh xuống"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                              </button>
+                            </div>
+                          );
                         }
                       }
                       return <img src={src} alt={alt} className="max-w-full h-auto rounded-lg shadow-sm my-2 inline-block" {...props} />;
                     },
                     a({ href, children, ...props }) {
-                      if (href?.startsWith('local-file://')) {
-                        const fileId = href.replace('local-file://', '');
+                      if (href?.startsWith('https://chat-file.local/') || href?.startsWith('https://chat-csv.local/')) {
+                        const isCsv = href.startsWith('https://chat-csv.local/');
+                        const fileId = href.replace(isCsv ? 'https://chat-csv.local/' : 'https://chat-file.local/', '');
                         
                         const handleDownload = (e: React.MouseEvent) => {
                           e.preventDefault();
                           // @ts-ignore
-                          const base64 = typeof window !== 'undefined' && window.__CHAT_FILES ? window.__CHAT_FILES[fileId] : null;
-                          if (!base64) {
-                            alert('Không tìm thấy dữ liệu file. Vui lòng tải lại trang.');
+                          const fileData = typeof window !== 'undefined' && window.__CHAT_FILES ? window.__CHAT_FILES[fileId] : null;
+                          if (!fileData) {
+                            alert('Không tìm thấy dữ liệu. Vui lòng tải lại trang.');
                             return;
                           }
                           
                           try {
-                            const byteCharacters = atob(base64);
-                            const byteNumbers = new Array(byteCharacters.length);
-                            for (let i = 0; i < byteCharacters.length; i++) {
-                              byteNumbers[i] = byteCharacters.charCodeAt(i);
+                            let blobUrl: string;
+                            if (isCsv) {
+                              // Tạo Workbook và Worksheet từ mảng dữ liệu (AoA)
+                              const wb = XLSX.utils.book_new();
+                              const ws = XLSX.utils.aoa_to_sheet(fileData);
+                              XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+                              
+                              const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+                              const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                              
+                              blobUrl = URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              a.href = blobUrl;
+                              a.download = `Bang_du_lieu.xlsx`;
+                              document.body.appendChild(a);
+                              a.click();
+                              document.body.removeChild(a);
+                            } else {
+                              const byteCharacters = atob(fileData);
+                              const byteNumbers = new Array(byteCharacters.length);
+                              for (let i = 0; i < byteCharacters.length; i++) {
+                                byteNumbers[i] = byteCharacters.charCodeAt(i);
+                              }
+                              const byteArray = new Uint8Array(byteNumbers);
+                              const blob = new Blob([byteArray], {type: 'application/pdf'});
+                              
+                              blobUrl = URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              a.href = blobUrl;
+                              a.download = String(children).replace('Tải xuống ', '');
+                              document.body.appendChild(a);
+                              a.click();
+                              document.body.removeChild(a);
                             }
-                            const byteArray = new Uint8Array(byteNumbers);
-                            const blob = new Blob([byteArray], {type: 'application/pdf'});
-                            
-                            const blobUrl = URL.createObjectURL(blob);
-                            const a = document.createElement('a');
-                            a.href = blobUrl;
-                            a.download = String(children);
-                            document.body.appendChild(a);
-                            a.click();
-                            document.body.removeChild(a);
                             URL.revokeObjectURL(blobUrl);
                           } catch (err) {
                             console.error("Lỗi khi tải file:", err);
@@ -210,10 +271,16 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
                           <a 
                             href="#" 
                             onClick={handleDownload} 
-                            className="inline-flex items-center gap-1.5 px-3 py-2 my-2 bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 rounded-lg shadow-sm hover:bg-blue-50 dark:hover:bg-slate-700 transition-colors font-medium border border-slate-200 dark:border-slate-700 no-underline"
+                            className={`inline-flex items-center gap-1.5 px-3 py-2 my-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm transition-colors font-medium border border-slate-200 dark:border-slate-700 no-underline ${
+                              isCsv ? "text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-slate-700" : "text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-700"
+                            }`}
                           >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                            Tải xuống {children}
+                            {isCsv ? (
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                            ) : (
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                            )}
+                            {isCsv ? children : `Tải xuống ${children}`}
                           </a>
                         );
                       }

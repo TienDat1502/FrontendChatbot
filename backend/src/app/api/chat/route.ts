@@ -7,7 +7,6 @@ import { NlpManager } from 'node-nlp';
 // Khởi tạo AI cục bộ (hỗ trợ tiếng Việt) ở ngoài hàm POST để tránh phải train lại mỗi lần chat
 const manager = new NlpManager({ languages: ['vi'], forceNER: true });
 
-// 1. Dạy AI học các câu mẫu (Training data)
 // -- Ý định: Nghỉ phép năm
 manager.addDocument('vi', 'cho tôi xem ngày phép', 'MY_ANNUALLEAVE');
 manager.addDocument('vi', 'tôi còn bao nhiêu phép năm', 'MY_ANNUALLEAVE');

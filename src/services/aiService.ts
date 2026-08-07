@@ -186,49 +186,80 @@ export async function callChatbotAPI(message: string): Promise<string> {
         markdownLines.push('|' + headers.map(() => '---').join('|') + '|');
         
         // Rows
+        const aoaData: string[][] = [headers];
         for (let i = 1; i < lines.length; i++) {
           const cells = parseCsvLine(lines[i]);
           markdownLines.push('| ' + cells.join(' | ') + ' |');
+          aoaData.push(cells);
         }
         
-        return markdownLines.join('\n');
-      });
-
-      // Xử lý thẻ <File> chứa Base64: Lưu vào biến toàn cục để không bị giới hạn 5MB của sessionStorage
-      finalMessage = finalMessage.replace(/<File>([\s\S]*?)<\/File>/gi, (match, fileContent) => {
-        const nameMatch = fileContent.match(/file_name:\s*([^,]+)/i);
-        const dataMatch = fileContent.match(/file_data:\s*([^,]+)/i);
-        
-        const fileName = nameMatch ? nameMatch[1].trim() : "Tài_liệu.pdf";
-        const fileData = dataMatch ? dataMatch[1].trim().replace(/\s+/g, '') : "";
-        
-        if (fileData && typeof window !== 'undefined') {
+        let downloadLink = '';
+        if (typeof window !== 'undefined') {
           // @ts-ignore
           if (!window.__CHAT_FILES) window.__CHAT_FILES = {};
-          const fileId = Math.random().toString(36).substring(2, 10);
+          const csvId = Math.random().toString(36).substring(2, 10);
           // @ts-ignore
-          window.__CHAT_FILES[fileId] = fileData;
-          return `\n\n[${fileName}](local-file://${fileId})\n\n`;
+          window.__CHAT_FILES[csvId] = aoaData;
+          downloadLink = `\n\n[Bảng dữ liệu Excel](https://chat-csv.local/${csvId})\n\n`;
         }
         
-        return `\n\n📎 **Tệp đính kèm:** \`${fileName}\` *(Lỗi tải file)*\n\n`;
+        return markdownLines.join('\n') + downloadLink;
       });
 
-      // Xử lý thẻ <Image> chứa Base64 siêu lớn
-      finalMessage = finalMessage.replace(/<Image>\s*([\s\S]*?)\s*<\/Image>/gi, (match, imageContent) => {
-        const base64Data = imageContent.trim().replace(/\s+/g, '');
-        
-        if (base64Data && typeof window !== 'undefined') {
-          // @ts-ignore
-          if (!window.__CHAT_FILES) window.__CHAT_FILES = {};
-          const imageId = Math.random().toString(36).substring(2, 10);
-          // @ts-ignore
-          window.__CHAT_FILES[imageId] = base64Data;
-          return `![Hình ảnh](local-image://${imageId})`;
+      // Xử lý thẻ <File> chứa Base64 bằng indexOf để tránh lỗi regex trên chuỗi dài
+      let fileStartIndex = finalMessage.indexOf('<File>');
+      while (fileStartIndex !== -1) {
+        const fileEndIndex = finalMessage.indexOf('</File>', fileStartIndex);
+        if (fileEndIndex !== -1) {
+          const fileContent = finalMessage.substring(fileStartIndex + 6, fileEndIndex);
+          const nameMatch = fileContent.match(/file_name:\s*([^,]+)/i);
+          const dataMatch = fileContent.match(/file_data:\s*([^,]+)/i);
+          
+          const fileName = nameMatch ? nameMatch[1].trim() : "Tài_liệu.pdf";
+          const fileData = dataMatch ? dataMatch[1].trim().replace(/\s+/g, '') : "";
+          
+          let replacement = `\n\n📎 **Tệp đính kèm:** \`${fileName}\` *(Lỗi tải file)*\n\n`;
+          
+          if (fileData && typeof window !== 'undefined') {
+            // @ts-ignore
+            if (!window.__CHAT_FILES) window.__CHAT_FILES = {};
+            const fileId = Math.random().toString(36).substring(2, 10);
+            // @ts-ignore
+            window.__CHAT_FILES[fileId] = fileData;
+            replacement = `\n\n[${fileName}](https://chat-file.local/${fileId})\n\n`;
+          }
+          
+          finalMessage = finalMessage.substring(0, fileStartIndex) + replacement + finalMessage.substring(fileEndIndex + 7);
+          fileStartIndex = finalMessage.indexOf('<File>', fileStartIndex + replacement.length);
+        } else {
+          break;
         }
-        
-        return `*(Lỗi hiển thị hình ảnh)*`;
-      });
+      }
+
+      // Xử lý thẻ <Image> chứa Base64 siêu lớn bằng indexOf để tránh lỗi regex trên chuỗi quá dài
+      let imgStartIndex = finalMessage.indexOf('<Image>');
+      while (imgStartIndex !== -1) {
+        const imgEndIndex = finalMessage.indexOf('</Image>', imgStartIndex);
+        if (imgEndIndex !== -1) {
+          const imageContent = finalMessage.substring(imgStartIndex + 7, imgEndIndex);
+          const base64Data = imageContent.trim().replace(/\s+/g, '');
+          
+          let replacement = `*(Lỗi hiển thị hình ảnh)*`;
+          if (base64Data && typeof window !== 'undefined') {
+            // @ts-ignore
+            if (!window.__CHAT_FILES) window.__CHAT_FILES = {};
+            const imageId = Math.random().toString(36).substring(2, 10);
+            // @ts-ignore
+            window.__CHAT_FILES[imageId] = base64Data;
+            replacement = `![Hình ảnh](https://chat-image.local/${imageId})`;
+          }
+          
+          finalMessage = finalMessage.substring(0, imgStartIndex) + replacement + finalMessage.substring(imgEndIndex + 8);
+          imgStartIndex = finalMessage.indexOf('<Image>', imgStartIndex + replacement.length);
+        } else {
+          break;
+        }
+      }
 
       return finalMessage;
     } else {
